@@ -24,7 +24,7 @@ def matchCaseInsensitively(base):
 def matchCaseSensitively(base):
     return lambda comp: comp.startswith(base)
 
-CAMEL_GROUP_RE = re.compile('[0-9]+|[^#][#]*|[#]+'.replace('#', 'a-z'))
+CAMEL_GROUP_RE = re.compile('[0-9]+|[^a-z][a-z]*|[a-z]+')
 def camelGroups(word):
     return CAMEL_GROUP_RE.findall(word)
 
