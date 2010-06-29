@@ -9,10 +9,10 @@
 
 # Released subject to the BSD License 
 
+import cPickle as pickle
 import os
 import sys
 from textwrap import dedent
-from pprint import pprint
 
 from pysmell.codefinder import ModuleDict, processFile
 from pysmell.idehelper import findRootPackageList
@@ -40,8 +40,8 @@ def test(aname):
 
 def generateClassTag(modules, output):
     p = os.path.abspath(output)
-    f = open(p, 'w')
-    pprint(modules, f, width=100)
+    f = open(p, 'wb')
+    pickle.dump(modules, f, protocol=pickle.HIGHEST_PROTOCOL)
     f.close()
 
 
