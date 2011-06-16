@@ -34,11 +34,23 @@ if !exists('g:pysmell_matcher')
 endif
 
 python << eopython
-from pysmell import vimhelper, idehelper
 import vim
+try:
+    from pysmell import vimhelper, idehelper
+    vim.command('let g:pysmell_exists=1')
+except:
+    pass
+   
 import string
 TRANSLATEQUOTES = string.maketrans("\'\"", "\"\'")
 eopython
+
+if !exists('g:pysmell_exists')
+    if g:pysmell_debug == 1
+        echo "Error: Required pysmell"
+    endif
+    finish
+endif
 
 function! pysmell#Complete(findstart, base)
     "findstart = 1 when we need to get the text length
