@@ -9,8 +9,6 @@ def run(command):
     print proc.communicate()[0]
 
 def rmtags():
-    run('rm tags')
-
     for root, dirs, files in os.walk('.'):
         for name in files:
             if name.startswith('PYSMELLTAGS') or name == 'tags':
