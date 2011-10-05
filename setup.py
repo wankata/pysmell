@@ -69,3 +69,23 @@ any editor that can run Python scripts and has an auto-complete API.
         
 
 )
+
+setup(name='mktags',
+      version='0.1',
+      packages = ['tags'],
+      entry_points={
+        'console_scripts':[
+            'mktags = tags.tag:mktags',
+        ]
+        },
+      )
+
+setup(name='rmtags',
+      version='0.1',
+      packages = ['tags'],
+      entry_points={
+        'console_scripts':[
+            'rmtags = tags.tag:rmtags',
+        ]
+        },
+      )
