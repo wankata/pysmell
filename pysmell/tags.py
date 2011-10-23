@@ -14,6 +14,9 @@ import os
 import sys
 from textwrap import dedent
 
+from pysmell.outputHandlers.PickleOut import PickleOut
+from pysmell.outputHandlers.EvalParser import EvalParser
+from pysmell.outputHandlers.FileOut import FileOut
 from pysmell.codefinder import ModuleDict, processFile
 from pysmell.idehelper import findRootPackageList
 
@@ -36,13 +39,6 @@ def test(aname):
     aname.do_stuff()
     aname.do_other_stuff()
 """
-
-
-def generateClassTag(modules, output):
-    p = os.path.abspath(output)
-    f = open(p, 'wb')
-    pickle.dump(modules, f, protocol=pickle.HIGHEST_PROTOCOL)
-    f.close()
 
 
 def process(filesOrDirectories, excluded, inputDict=None, verbose=False):
@@ -112,6 +108,8 @@ def main():
     parser.add_argument('-x', '--exclude', metavar='package', nargs='*', type=str, default=[],
         help=dedent("""Will not analyze files in directories that match the
         argument. Useful for excluding tests or version control directories."""))
+    parser.add_argument('-p', '--pickle', action='store_true',
+        help='Set to enable pickle output in stead og pparsed output')
     parser.add_argument('-o', '--output', default='PYSMELLTAGS',
         help="File to write the tags to")
     parser.add_argument('-i', '--input',
@@ -127,6 +125,7 @@ def main():
     output = args.output
     verbose = args.debug
     inputFile = args.input
+    pickle = args.pickle
     if inputFile:
         try:
             inputDict = eval(file(inputFile).read())
@@ -144,7 +143,15 @@ def main():
         print 'processing', fileList
         print 'ignoring', excluded
     modules = process(fileList, excluded, inputDict=inputDict, verbose=verbose)
-    generateClassTag(modules, output)
+
+    if (pickle):
+        handler = PickleOut(output)
+    else:
+        handler = EvalParser(FileOut(output))
+
+    handler.write(modules)
+
+#    generateClassTag(modules, output)
     if timing:
         took = time.clock() - start
         print 'took %f seconds' % took
