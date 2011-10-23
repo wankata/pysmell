@@ -5,11 +5,17 @@ from pysmell.matchers import (matchCaseSensitively, matchCaseInsensitively,
 class MatcherTest(unittest.TestCase):
     def testCamelGroups(self):
         def assertCamelGroups(word, groups):
-            self.assertEquals(list(camelGroups(word)), groups.split())
+            expected = groups.split()
+            actual = list(camelGroups(word))
+            msg = "expected %s, but got %s camelGroups" % (expected, actual)
+            self.assertEquals(actual, expected, msg)
         assertCamelGroups('alaMaKota', 'ala Ma Kota')
         assertCamelGroups('AlaMaKota', 'Ala Ma Kota')
         assertCamelGroups('isHTML', 'is H T M L')
         assertCamelGroups('ala_ma_kota', 'ala _ma _kota')
+        assertCamelGroups('html2latex', 'html 2 latex')
+        assertCamelGroups('Error404', 'Error 404')
+        assertCamelGroups('ok_200', 'ok _ 200')
 
     def testMatchers(self):
         def assertMatches(base, word):

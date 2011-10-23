@@ -24,19 +24,9 @@ def matchCaseInsensitively(base):
 def matchCaseSensitively(base):
     return lambda comp: comp.startswith(base)
 
+CAMEL_GROUP_RE = re.compile('[0-9]+|[^a-z][a-z]*|[a-z]+')
 def camelGroups(word):
-    groups = []
-    rest = word
-    while rest:
-        i, limit = 0, len(rest)
-        while i < limit:
-            suspect = rest[1:i+1]
-            if i and not (suspect.islower() and suspect.isalnum()):
-                break
-            i += 1
-        part, rest = rest[:i], rest[i:]
-        groups.append(part)
-    return groups
+    return CAMEL_GROUP_RE.findall(word)
 
 def matchCamelCasedPrecise(base):
     baseGr = camelGroups(base)
