@@ -8,6 +8,7 @@
 # Released subject to the BSD License 
 
 import __builtin__
+import cPickle as pickle
 import os, re
 import fnmatch
 from dircache import listdir
@@ -37,9 +38,9 @@ def updatePySmellDict(master, partial):
 
 def tryReadPYSMELLDICT(directory, filename, dictToUpdate):
     if os.path.exists(os.path.join(directory, filename)):
-        tagsFile = open(os.path.join(directory, filename), 'r')
+        tagsFile = open(os.path.join(directory, filename), 'rb')
         try:
-            updatePySmellDict(dictToUpdate, eval(tagsFile.read()))
+            updatePySmellDict(dictToUpdate, pickle.load(tagsFile))
         finally:
             tagsFile.close()
     
