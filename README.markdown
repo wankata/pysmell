@@ -162,6 +162,8 @@ Krzysiek Goj - github.com/goj
 Werner Mendizabal (nonameentername@gmail.com) - github.com/nonameentername
 Alec Thomas (alec@swapoff.org) - github.com/alecthomas
 Michael Thalmeier - github.com/mthalmei
+Tom Wright (tat.wright@tat.wright.name)
+Jaime Wyant (programmer.py@gmail.com)
 
 ## License 
 Copyright 2011 Rohde Fischer (rohdef@rohdef.dk). All rights reserved.

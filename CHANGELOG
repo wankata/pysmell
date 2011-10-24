@@ -1,3 +1,11 @@
+PySmell 0.8.0 - ?? ??? 2011
+
+Made parsing and outputting modular
+Made outputting use decorators
+
+Merged changes from different forks
+
+
 PySmell v0.7.3 - 16 Jan 2009
 
 Better support for windows line endings.
