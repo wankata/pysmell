@@ -41,7 +41,7 @@ def test(aname):
 """
 
 
-def process(filesOrDirectories, excluded, inputDict=None, verbose=False):
+def process(filesOrDirectories, excluded=[], inputDict=None, verbose=False):
     """
     Visit every package in ``filesOrDirectories`` and return a ModuleDict for everything,
     that can be used to generate a PYSMELLTAGS file.

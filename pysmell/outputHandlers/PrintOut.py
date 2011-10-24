@@ -6,11 +6,9 @@
 
 version = __import__('pysmell').__version__
 
-class FileOut():
-    def __init__(self, filePath):
-        self.filePath = os.path.abspath(filePath)
+class PrintOut():
+    def __init__(self):
+        pass
 
     def write(self, output):
-        f = open(self.filePath, 'w')
-        f.write(output)
-        f.close()
+        print output
