@@ -20,22 +20,7 @@ $ git reset --hard HEAD
 
 + There's two ways to use this, if you want to import it as a part of your own Python project go to 
 the cloned pysmell, and copy the pysmell subdirectory to you project. From there you can use it as 
-follows:
-
-		from pysmell.tags import process
-		from pysmell.outputHandlers.EvalParser import EvalParser
-		from pysmell.outputHandlers.PrintOut import PrintOut
-	
-		def parsePythonCode(fileList):
-		    """
-		    Parse a list of files into a module directionary for further parsing,
-		    then send the modules to an EvalParser (uses pretty print aka pprint)
-		    which is set to use PrintOut for wrting its contents. Finally do the 
-		    write to actually run the parsing and printing.
-		    """
-		    modules = process(fileList)
-		    parser = EvalParser(PrintOut())
-		    parser.write(modules)
+seen in runPySmell.py
 
 More parsers and out systems can be found in the outputHandlers directory, and more 
 examples can be found in runPySmell.py
