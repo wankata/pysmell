@@ -1,19 +1,33 @@
-# codefinder.py
+# codefinder2.py
 # Statically analyze python code
-# Copyright (C) 2008 Orestis Markou
-# All rights reserved
-# E-mail: orestis@orestis.gr
+#
+#
+# Copyright (C) 2011 by Rohde Fischer <rohdef@rohdef.dk> www.rohdef.dk
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 
-# http://orestis.gr
-
-# Released subject to the BSD License 
 
 import os
 import sys
 import __builtin__
-import compiler
-
-from compiler import ast
+import ast
+#from compiler import ast
 
 class ModuleDict(dict):
     def __init__(self):
@@ -96,20 +110,60 @@ class ModuleDict(dict):
     def __ne__(self, other):
         return not self == other
 
-
 def VisitChildren(fun):
+    """
+    Visit the children of the given node, ensuring that all details are registered.
+    Eg. when visiting a class we also want to visit it's functions.
+    """
     def decorated(self, *args, **kwargs):
         fun(self, *args, **kwargs)
-        self.handleChildren(args[0])
+        self.generic_visit(args[0])
     return decorated
 
+class CodeFinder2(ast.NodeVisitor):
+    """
+    Walk through the nodes of the python tree, to build the module dictionary.
+    """
+    def __init__(self):
+        self.scope = []
+        self.imports = {}
+        self.modules = ModuleDict()
+        self.module = '__module__'
+        self.__package = '__package__'
+        self.path = '__path__'
+    
+    def enterScope(self, node):
+        self.scope.append(node)
+
+    def exitScope(self):
+        self.scope.pop()
+    
+    def inClassFunction(self):
+        return False
+
+    def visit_FunctionDef(self, node):
+        self.enterScope(node)
+        if self.inClassFunction:
+            if func.name != '__init__':
+                if func.decorators and 'property' in [getName(n) for n in func.decorators]:
+                    self.modules.addProperty(self.currentClass, func.name)
+                else:
+                    self.modules.addMethod(self.currentClass, func.name,
+                                    getFuncArgs(func), func.doc or "")
+            else:
+                self.modules.setConstructor(self.currentClass, getFuncArgs(func))
+        elif len(self.scope) == 1:
+            self.modules.addFunction(func.name, getFuncArgs(func,
+                                inClass=False), func.doc or "")
+
+        self.visit(func.code)
+        self.exitScope()
 
 class BaseVisitor(object):
     def __init__(self):
         self.scope = []
         self.imports = {}
-
-
+        
     def handleChildren(self, node):
         for c in node.getChildNodes():
             self.visit(c)
@@ -167,12 +221,6 @@ class CodeFinder(BaseVisitor):
         return (len(self.scope) == 2 and 
                 isinstance(self.scope[-1], ast.Function) and
                 isinstance(self.scope[-2], ast.Class))
-
-    def enterScope(self, node):
-        self.scope.append(node)
-
-    def exitScope(self):
-        self.scope.pop()
 
     @property
     def currentClass(self):
@@ -268,14 +316,14 @@ def getNameTwo(template, left, right, leftJ='', rightJ=''):
     return template % (leftJ.join(map(getName, left)),
                         rightJ.join(map(getName, right)))
 
-MATHNODES = {
-    ast.Add: '+',
-    ast.Sub: '-',
-    ast.Mul: '*',
-    ast.Power: '**',
-    ast.Div: '/',
-    ast.Mod: '%',
-}
+#MATHNODES = {
+#    ast.Add: '+',
+#    ast.Sub: '-',
+#    ast.Mul: '*',
+#    ast.Power: '**',
+#    ast.Div: '/',
+#    ast.Mod: '%',
+#}
 
 def getNameMath(node):
     return '%s%s%s' % (getName(node.left), MATHNODES[node.__class__], getName(node.right))
@@ -397,18 +445,20 @@ def findRootPackageList(directory, filename):
     return packages
 
 
-def findPackage(path):
-    packages = findRootPackageList(path, "")
-    package = '.'.join(packages)
-    return package
-
+#def findPackage(path):
+#    packages = findRootPackageList(path, "")
+#    package = '.'.join(packages)
+#    return package
+#
 
 def processFile(f, path):
     """f is the the filename, path is the relative path in the project, root is
     the topmost package"""
     codeFinder = CodeFinder()
 
-    package = findPackage(path)
+    packages = findRootPackageList(path, "")
+    package = '.'.join(packages)
+    #package = findPackage(path)
     codeFinder.package = package
     codeFinder.module = f[:-3]
     codeFinder.path = path
@@ -431,7 +481,9 @@ def analyzeFile(fullPath, tree):
     absPath, filename = os.path.split(fullPath)
     codeFinder.module = filename[:-3]
     codeFinder.path = absPath
-    package = findPackage(absPath)
+    packages = findRootPackageList(path, "")
+    package = '.'.join(packages)
+    #package = findPackage(absPath)
     codeFinder.package = package
     compiler.walk(tree, codeFinder)
     return codeFinder.modules

@@ -18,7 +18,7 @@ from pysmell.outputHandlers.PickleOut import PickleOut
 from pysmell.outputHandlers.EvalParser import EvalParser
 from pysmell.outputHandlers.FileOut import FileOut
 from pysmell.codefinder import ModuleDict, processFile
-from pysmell.idehelper import findRootPackageList
+#from pysmell.idehelper import findRootPackageList
 
 from pysmell import argparse
  
