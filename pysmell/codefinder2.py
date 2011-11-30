@@ -123,9 +123,9 @@ class CodeFinder2(ast.NodeVisitor):
     """
     Walk through the nodes of the python tree, to build the module dictionary.
     """
+    
     def __init__(self):
         self.scope = []
-        self.imports = {}
         self.modules = ModuleDict()
         self.module = '__module__'
         self.__package = '__package__'
@@ -148,7 +148,11 @@ class CodeFinder2(ast.NodeVisitor):
     
     def inClassFunction(self):
         return False
-
+    
+    def isRelativeImport(self, imported):
+        pathToImport = os.path.join(self.path, *imported.split('.'))
+        return os.path.exists(pathToImport) or os.path.exists(pathToImport + '.py')
+    
     def visit_Module(self, node):
         if self.module == '__init__':
             self.modules.enterModule('%s' % self.package[:-1]) # remove dot
@@ -156,21 +160,33 @@ class CodeFinder2(ast.NodeVisitor):
             self.modules.enterModule('%s%s' % (self.package, self.module))
         ast.NodeVisitor.generic_visit(self, node)
         self.modules.exitModule()
+    
+    @VisitChildren
+    def visit_Import(self, node):
+        for name in node.names:
+            imported = name.name
+            asName = name.asname or name.name
+            if self.isRelativeImport(imported):
+                imported = "%s%s" % (self.package, imported)
+            self.modules.addPointer("%s.%s" % (self.modules.currentModule, asName), imported)
+    
+    def visit_ImportFrom(self, node):
+        for name in node.names:
+            asName = name.asname or name.name
+            imported = name.name
+            # TODO suspicious use of node.module (there's a ? at the property in the documentation)
+            if self.isRelativeImport(node.module):
+                imported = "%s%s.%s" % (self.package, node.module, imported)
+            else:
+                imported = "%s.%s" % (node.module, imported)
+            self.modules.addPointer("%s.%s" % (self.modules.currentModule, asName), imported)
+
 
     def visit_FunctionDef(self, node):
         self.enterScope(node)
-        if self.inClassFunction():
-            pass
-#            if node.name != '__init__':
-#                if node.decorators and 'property' in [getName(n) for n in func.decorators]:
-#                    self.modules.addProperty(self.currentClass, node.name)
-#                else:
-#                    self.modules.addMethod(self.currentClass, node.name,
-#                                    getFuncArgs(func), func.doc or "")
-#            else:
-#                self.modules.setConstructor(self.currentClass, getFuncArgs(func))
-        elif len(self.scope) == 1:
-            fv = FunctionVisitor2()
+
+        if len(self.scope) == 1:
+            fv = _FunctionVisitor2()
             fv.generic_visit(node)
             args = fv.args
             if (node.args.vararg):
@@ -178,11 +194,26 @@ class CodeFinder2(ast.NodeVisitor):
             if (node.args.kwarg):
                 args.append("**%s" % node.args.kwarg)
             self.modules.addFunction(node.name, args, fv.docstring)
-            #self.modules.addFunction(node.name, getFuncArgs(node, inClass=False), func.doc or "")
 
         self.exitScope()
+        
+    def visit_ClassDef(self, node):
+        self.enterScope(node)
+        cv = _ClassVisitor2()
+        cv.generic_visit(node)
+        if len(self.scope) == 1:
+            self.modules.enterClass(node.name, cv.bases, "")
+        
+        self.exitScope()
 
-class FunctionVisitor2(ast.NodeVisitor):
+class _ClassVisitor2(ast.NodeVisitor):
+    def __init__(self):
+        self.bases = []
+    
+    def visit_Name(self, node):
+        self.bases.append(node.id)
+
+class _FunctionVisitor2(ast.NodeVisitor):
     def __init__(self):
         self.docstring = ""
         self.args = []
@@ -204,120 +235,6 @@ class FunctionVisitor2(ast.NodeVisitor):
         # Append the default value to the last parameter (there better be a better way to do this)
         if isinstance(node.ctx, ast.Load):
             self.args[len(self.args)-1] += "=%s" % node.id
-
-class BaseVisitor(object):
-    def handleChildren(self, node):
-        for c in node.getChildNodes():
-            self.visit(c)
-
-    @VisitChildren
-    def visitFrom(self, node):
-        for name in node.names:
-            asName = name[1] or name[0]
-            self.imports[asName] = "%s.%s" % (node.modname, name[0])
-
-    @VisitChildren
-    def visitImport(self, node):
-        for name in node.names:
-            asName = name[1] or name[0]
-            self.imports[asName] = name[0]
-
-    def qualify(self, name, curModule):
-        if hasattr(__builtin__, name):
-            return name
-        if name in self.imports:
-            return self.imports[name]
-        for imp in self.imports:
-            if name.startswith(imp):
-                actual = self.imports[imp]
-                return "%s%s" % (actual, name[len(imp):])
-        if curModule:
-            return '%s.%s' % (curModule, name)
-        else:
-            return name
-
-class CodeFinder(BaseVisitor):
-    @property
-    def inClass(self):
-        return (len(self.scope) > 0 and (isinstance(self.scope[-1], ast.Class)
-                    or self.inClassFunction))
-
-    @property
-    def inClassFunction(self):
-        return (len(self.scope) == 2 and 
-                isinstance(self.scope[-1], ast.Function) and
-                isinstance(self.scope[-2], ast.Class))
-
-    @property
-    def currentClass(self):
-        if self.inClassFunction:
-            return self.scope[-2].name
-        elif self.inClass:
-            return self.scope[-1].name
-        return None
-
-    def visitModule(self, node):
-        if self.module == '__init__':
-            self.modules.enterModule('%s' % self.package[:-1]) # remove dot
-        else:
-            self.modules.enterModule('%s%s' % (self.package, self.module))
-        self.visit(node.node)
-        self.modules.exitModule()
-
-    @VisitChildren
-    def visitGetattr(self, node):
-        if self.inClass:
-            if isinstance(node.expr, ast.Name):
-                if node.expr.name == 'self':
-                    pass
-            elif isinstance(node.expr, ast.CallFunc):
-                pass
-
-    @VisitChildren
-    def visitAssAttr(self, node):
-        if self.inClassFunction:
-            if isinstance(node.expr, ast.Name):
-                if node.expr.name == 'self':
-                    self.modules.addProperty(self.currentClass, node.attrname)
-
-    @VisitChildren
-    def visitAssName(self, node):
-        if self.inClass and len(self.scope) == 1:
-            self.modules.addProperty(self.currentClass, node.name)
-        elif len(self.scope) == 0:
-            self.modules.addProperty(None, node.name)
-
-    def visitFrom(self, node):
-        BaseVisitor.visitFrom(self, node)
-        for name in node.names:
-            asName = name[1] or name[0]
-            imported = name[0]
-            if self.isRelativeImport(node.modname):
-                imported = "%s%s.%s" % (self.package, node.modname, imported)
-            else:
-                imported = "%s.%s" % (node.modname, imported)
-            self.modules.addPointer("%s.%s" % (self.modules.currentModule, asName), imported)
-
-    def visitImport(self, node):
-        BaseVisitor.visitImport(self, node)
-        for name in node.names:
-            asName = name[1] or name[0]
-            imported = name[0]
-            if self.isRelativeImport(imported):
-                imported = "%s%s" % (self.package, imported)
-            self.modules.addPointer("%s.%s" % (self.modules.currentModule, asName), imported)
-
-    def isRelativeImport(self, imported):
-        pathToImport = os.path.join(self.path, *imported.split('.'))
-        return os.path.exists(pathToImport) or os.path.exists(pathToImport + '.py')
-        
-    def visitClass(self, klass):
-        self.enterScope(klass)
-        if len(self.scope) == 1:
-            bases = [self.qualify(getName(b), self.modules.currentModule) for b in klass.bases]
-            self.modules.enterClass(klass.name, bases, klass.doc or '')
-        self.visit(klass.code)
-        self.exitScope()
 
 
 def getNameTwo(template, left, right, leftJ='', rightJ=''):
@@ -407,24 +324,6 @@ def argToStr(arg):
     return arg
             
 
-def getFuncArgs(func, inClass=True):
-    args = []
-#    args = map(argToStr, func.argnames[:])
-#    if func.kwargs and func.varargs:
-#        args[-1] = '**' + args[-1]
-#        args[-2] = '*' + args[-2]
-#    elif func.kwargs:
-#        args[-1] = '**' + args[-1]
-#    elif func.varargs:
-#        args[-1] = '*' + args[-1]
-
-#    if inClass:
-#        args = args[1:]
-#
-
-    return args
-
-
 def getClassDict(path, codeFinder=None):
     tree = compiler.parseFile(path)
     if codeFinder is None:
@@ -489,38 +388,6 @@ def analyzeFile(fullPath, tree):
     codeFinder.package = package
     compiler.walk(tree, codeFinder)
     return codeFinder.modules
-        
-
-class SelfInferer(BaseVisitor):
-    def __init__(self):
-        BaseVisitor.__init__(self)
-        self.classRanges = []
-        self.lastlineno = 1
-
-    def __getattr__(self, _):
-        return self.handleChildren
-
-    def handleChildren(self, node):
-        self.lastlineno = node.lineno
-        BaseVisitor.handleChildren(self, node)
-
-
-    def visitClass(self, klassNode):
-        self.visit(klassNode.code)
-        nestedStart, nestedEnd = None, None
-        for klass, _, start, end in self.classRanges:
-            if start > klassNode.lineno and end < self.lastlineno:
-                nestedStart, nestedEnd = start, end
-            
-        bases = [self.qualify(getName(b), None) for b in klassNode.bases]
-        if nestedStart == nestedEnd == None:
-            self.classRanges.append((klassNode.name, bases, klassNode.lineno, self.lastlineno))
-        else:
-            start, end = klassNode.lineno, self.lastlineno
-            self.classRanges.append((klassNode.name, bases, start, nestedStart-1))
-            self.classRanges.append((klassNode.name, bases, nestedEnd+1, end))
-        self.lastlineno = klassNode.lineno
-
 
 def getSafeTree(source, lineNo):
     source = source.replace('\r\n', '\n')
@@ -545,34 +412,6 @@ def getSafeTree(source, lineNo):
 
     return tree
 
-class NameVisitor(BaseVisitor):
-    def __init__(self):
-        BaseVisitor.__init__(self)
-        self.names = {}
-        self.klasses = []
-        self.lastlineno = 1
-
-
-    def handleChildren(self, node):
-        self.lastlineno = node.lineno
-        BaseVisitor.handleChildren(self, node)
-
-
-    @VisitChildren
-    def visitAssign(self, node):
-        assNode = node.nodes[0]
-        name = None
-        if isinstance(assNode, ast.AssName):
-            name = assNode.name
-        elif isinstance(assNode, ast.AssAttr):
-            name = assNode.attrname
-        self.names[name] = getName(node.expr)
-
-    @VisitChildren
-    def visitClass(self, node):
-        self.klasses.append(node.name)
-
-
 def getNames(tree):
     if tree is None:
         return None
@@ -581,8 +420,6 @@ def getNames(tree):
     names = inferer.names
     names.update(inferer.imports)
     return names, inferer.klasses
-    
-
 
 def getImports(tree):
     if tree is None:

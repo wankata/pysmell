@@ -66,7 +66,7 @@ class CodeFinderTest(unittest.TestCase):
         codeFinder = CodeFinder2()
         codeFinder.package = 'TestPackage'
         codeFinder.module = '__init__'
-        codefinder.visit(tree)
+        codeFinder.visit(tree)
         expected = {'CLASSES': {'TestPackage.A': dict(docstring='', bases=['object'], constructor=[], methods=[], properties=[])},
             'FUNCTIONS': [], 'CONSTANTS': [], 'POINTERS': {}, 'HIERARCHY': ['TestPackage']}
         actual = eval(pformat(codeFinder.modules))
@@ -318,41 +318,58 @@ class CodeFinderTest(unittest.TestCase):
 
     
     def testRelativeImports(self):
-        import pysmell.codefinder
-        oldExists = pysmell.codefinder.os.path.exists
+        import pysmell.codefinder2
+        oldExists = pysmell.codefinder2.os.path.exists
         # monkeypatch relative.py into the path somewhere
         paths = []
         def mockExists(path):
             paths.append(path)
             return True
 
-        pysmell.codefinder.os.path.exists = mockExists
+        pysmell.codefinder2.os.path.exists = mockExists
 
         try:
             out = self.getModule("""
                 import relative    
+            """)
+            assert_that(out['POINTERS'], 
+                equal_to({'TestPackage.TestModule.relative': 'TestPackage.relative'}))
+            expectedPaths = [os.path.join('__path__', 'relative'),]
+            assert_that(paths, equal_to(expectedPaths))
+            
+            paths = []
+            out = self.getModule("""
                 from relative.removed import brother as bro
             """)
-            self.assertEquals(out['POINTERS'],
-                {
-                    'TestPackage.TestModule.relative': 'TestPackage.relative',
-                    'TestPackage.TestModule.bro': 'TestPackage.relative.removed.brother'
-                }
-            )
+            assert_that(out['POINTERS'],
+                equal_to({'TestPackage.TestModule.bro': 'TestPackage.relative.removed.brother'}))
+            expectedPaths = [
+                os.path.join('__path__', 'relative', 'removed'),
+            ]
+            assert_that(paths, equal_to(expectedPaths))
+            
+            paths = []
+            out = self.getModule("""
+                import relative    
+                from relative.removed import brother as bro
+            """)
+            assert_that(out['POINTERS'],
+                equal_to({'TestPackage.TestModule.relative': 'TestPackage.relative',
+                    'TestPackage.TestModule.bro': 'TestPackage.relative.removed.brother'}))
             expectedPaths = [
                 os.path.join('__path__', 'relative'),
                 os.path.join('__path__', 'relative', 'removed'),
             ]
-            self.assertEquals(paths, expectedPaths)
+            assert_that(paths, equal_to(expectedPaths))
         finally:
-            pysmell.codefinder.os.path.exists = oldExists
+            pysmell.codefinder2.os.path.exists = oldExists
 
 
     def testHierarchy(self):
         class MockNode(object):
             node = 1
         node = MockNode()
-        codeFinder = CodeFinder()
+        codeFinder = CodeFinder2()
         codeFinder.visit = lambda _: None
 
         codeFinder.package = 'TestPackage'
