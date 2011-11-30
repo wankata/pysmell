@@ -1,6 +1,7 @@
 import os
 import unittest
 import ast
+from hamcrest import *
 from textwrap import dedent
 from pprint import pformat
 
@@ -210,7 +211,29 @@ class CodeFinderTest(unittest.TestCase):
                            ]
         self.assertEquals(out['CLASSES']['TestPackage.TestModule.A']['methods'], expectedMethods)
 
-
+    def test_SimpleTopLevelFunction(self):
+        out = self.getModule("""
+        def TopFunction():
+            pass
+        """)
+        expectedFunctions = [('TestPackage.TestModule.TopFunction', [], '')]
+        #self.assertEquals(out['FUNCTIONS'], expectedFunctions)
+        assert_that(out['FUNCTIONS'], equal_to(expectedFunctions))
+        
+        out = self.getModule("""
+        def TopFunction(arg1, arg2=True):
+            pass
+        """)
+        expectedFunctions = [('TestPackage.TestModule.TopFunction', ['arg1', 'arg2=True'], '')]
+        assert_that(out['FUNCTIONS'], equal_to(expectedFunctions))
+        
+        out = self.getModule("""
+        def TopFunction():
+            'random docstring'
+        """)
+        expectedFunctions = [('TestPackage.TestModule.TopFunction', [], 'random docstring')]
+        assert_that(out['FUNCTIONS'], equal_to(expectedFunctions))
+            
     def testTopLevelFunctions(self):
         out = self.getModule("""
         def TopFunction1(arg1, arg2=True, **spinach):
@@ -220,9 +243,9 @@ class CodeFinderTest(unittest.TestCase):
         """)
         expectedFunctions = [('TestPackage.TestModule.TopFunction1', ['arg1', 'arg2=True', '**spinach'], 'random docstring'),
                              ('TestPackage.TestModule.TopFunction2', ['arg1', 'arg2=False'], 'random docstring2')]
-        self.assertEquals(out['FUNCTIONS'], expectedFunctions)
-
-
+        assert_that(out['FUNCTIONS'], equal_to(expectedFunctions))
+    
+    
     def testNestedStuff(self):
         out = self.getModule("""
         class A(object):

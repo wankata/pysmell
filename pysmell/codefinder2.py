@@ -27,7 +27,6 @@ import os
 import sys
 import __builtin__
 import ast
-#from compiler import ast
 
 class ModuleDict(dict):
     def __init__(self):
@@ -132,6 +131,15 @@ class CodeFinder2(ast.NodeVisitor):
         self.__package = '__package__'
         self.path = '__path__'
     
+    def __setPackage(self, package):
+        """ Ensures a dot in the end of the packagename """
+        if package:
+            self.__package = package + '.'
+        else:
+            self.__package = ''
+
+    package = property(lambda s: s.__package, __setPackage)
+    
     def enterScope(self, node):
         self.scope.append(node)
 
@@ -141,29 +149,63 @@ class CodeFinder2(ast.NodeVisitor):
     def inClassFunction(self):
         return False
 
+    def visit_Module(self, node):
+        if self.module == '__init__':
+            self.modules.enterModule('%s' % self.package[:-1]) # remove dot
+        else:
+            self.modules.enterModule('%s%s' % (self.package, self.module))
+        ast.NodeVisitor.generic_visit(self, node)
+        self.modules.exitModule()
+
     def visit_FunctionDef(self, node):
         self.enterScope(node)
-        if self.inClassFunction:
-            if func.name != '__init__':
-                if func.decorators and 'property' in [getName(n) for n in func.decorators]:
-                    self.modules.addProperty(self.currentClass, func.name)
-                else:
-                    self.modules.addMethod(self.currentClass, func.name,
-                                    getFuncArgs(func), func.doc or "")
-            else:
-                self.modules.setConstructor(self.currentClass, getFuncArgs(func))
+        if self.inClassFunction():
+            pass
+#            if node.name != '__init__':
+#                if node.decorators and 'property' in [getName(n) for n in func.decorators]:
+#                    self.modules.addProperty(self.currentClass, node.name)
+#                else:
+#                    self.modules.addMethod(self.currentClass, node.name,
+#                                    getFuncArgs(func), func.doc or "")
+#            else:
+#                self.modules.setConstructor(self.currentClass, getFuncArgs(func))
         elif len(self.scope) == 1:
-            self.modules.addFunction(func.name, getFuncArgs(func,
-                                inClass=False), func.doc or "")
+            fv = FunctionVisitor2()
+            fv.generic_visit(node)
+            args = fv.args
+            if (node.args.vararg):
+                args.append("*%s" % node.args.vararg)
+            if (node.args.kwarg):
+                args.append("**%s" % node.args.kwarg)
+            self.modules.addFunction(node.name, args, fv.docstring)
+            #self.modules.addFunction(node.name, getFuncArgs(node, inClass=False), func.doc or "")
 
-        self.visit(func.code)
         self.exitScope()
 
-class BaseVisitor(object):
+class FunctionVisitor2(ast.NodeVisitor):
     def __init__(self):
-        self.scope = []
-        self.imports = {}
+        self.docstring = ""
+        self.args = []
+    
+    def visit_Str(self, node):
+        """
+        Get the docstring
+        """
+        self.docstring = node.s
+        ast.NodeVisitor.generic_visit(self, node)
+    
+    def visit_Name(self, node):
+        """
+        Handles function parameters, and adds them to the parameter list.
+        """
+        if isinstance(node.ctx, ast.Param):
+            self.args.append(node.id)
         
+        # Append the default value to the last parameter (there better be a better way to do this)
+        if isinstance(node.ctx, ast.Load):
+            self.args[len(self.args)-1] += "=%s" % node.id
+
+class BaseVisitor(object):
     def handleChildren(self, node):
         for c in node.getChildNodes():
             self.visit(c)
@@ -195,22 +237,6 @@ class BaseVisitor(object):
             return name
 
 class CodeFinder(BaseVisitor):
-    def __init__(self):
-        BaseVisitor.__init__(self)
-        self.modules = ModuleDict()
-        self.module = '__module__'
-        self.__package = '__package__'
-        self.path = '__path__'
-
-    
-    def __setPackage(self, package):
-        if package:
-            self.__package = package + '.'
-        else:
-            self.__package = ''
-
-    package = property(lambda s: s.__package, __setPackage)
-
     @property
     def inClass(self):
         return (len(self.scope) > 0 and (isinstance(self.scope[-1], ast.Class)
@@ -291,24 +317,6 @@ class CodeFinder(BaseVisitor):
             bases = [self.qualify(getName(b), self.modules.currentModule) for b in klass.bases]
             self.modules.enterClass(klass.name, bases, klass.doc or '')
         self.visit(klass.code)
-        self.exitScope()
-
-    def visitFunction(self, func):
-        self.enterScope(func)
-        if self.inClassFunction:
-            if func.name != '__init__':
-                if func.decorators and 'property' in [getName(n) for n in func.decorators]:
-                    self.modules.addProperty(self.currentClass, func.name)
-                else:
-                    self.modules.addMethod(self.currentClass, func.name,
-                                    getFuncArgs(func), func.doc or "")
-            else:
-                self.modules.setConstructor(self.currentClass, getFuncArgs(func))
-        elif len(self.scope) == 1:
-            self.modules.addFunction(func.name, getFuncArgs(func,
-                                inClass=False), func.doc or "")
-
-        self.visit(func.code)
         self.exitScope()
 
 
@@ -400,25 +408,19 @@ def argToStr(arg):
             
 
 def getFuncArgs(func, inClass=True):
-    args = map(argToStr, func.argnames[:])
-    if func.kwargs and func.varargs:
-        args[-1] = '**' + args[-1]
-        args[-2] = '*' + args[-2]
-    elif func.kwargs:
-        args[-1] = '**' + args[-1]
-    elif func.varargs:
-        args[-1] = '*' + args[-1]
+    args = []
+#    args = map(argToStr, func.argnames[:])
+#    if func.kwargs and func.varargs:
+#        args[-1] = '**' + args[-1]
+#        args[-2] = '*' + args[-2]
+#    elif func.kwargs:
+#        args[-1] = '**' + args[-1]
+#    elif func.varargs:
+#        args[-1] = '*' + args[-1]
 
-    if inClass:
-        args = args[1:]
-
-    offset = bool(func.varargs) + bool(func.kwargs) + 1
-    for default in reversed(func.defaults):
-        name = getName(default)
-        if isinstance(default, ast.Const):
-            name = repr(default.value)
-        args[-offset] = args[-offset] + "=" + name
-        offset += 1
+#    if inClass:
+#        args = args[1:]
+#
 
     return args
 
