@@ -74,8 +74,7 @@ class CodeFinderTest(unittest.TestCase):
 
 
     def assertClasses(self, moduleDict, expected):
-        self.assertEquals(moduleDict['CLASSES'], expected)
-
+        assert_that(moduleDict['CLASSES'], equal_to(expected))
 
     def testSimpleClass(self):
         out = self.getModule("""
@@ -120,7 +119,7 @@ class CodeFinderTest(unittest.TestCase):
     def assertNamesIsHandled(self, name):
         try:
             from sourcecodegen.generation import ModuleSourceCodeGenerator
-            tree = ast.parse(dedent(source), "Test source")
+            tree = ast.parse(name)
             source = ModuleSourceCodeGenerator(tree).getSourceCode()[:-1] #strip newline
             if source != name:
                 print 'pycodegen: %s != %s' % (source, name)
@@ -176,7 +175,7 @@ class CodeFinderTest(unittest.TestCase):
                 pass
         """)
         expectedProps = ['classprop', 'plainprop', 'methodProp']
-        self.assertEquals(out['CLASSES']['TestPackage.TestModule.A']['properties'], expectedProps)
+        assert_that(out['CLASSES']['TestPackage.TestModule.A']['properties'], equal_to(expectedProps))
 
 
     def testClassMethods(self):
@@ -217,7 +216,13 @@ class CodeFinderTest(unittest.TestCase):
             pass
         """)
         expectedFunctions = [('TestPackage.TestModule.TopFunction', [], '')]
-        #self.assertEquals(out['FUNCTIONS'], expectedFunctions)
+        assert_that(out['FUNCTIONS'], equal_to(expectedFunctions))
+        
+        out = self.getModule("""
+        def TopFunction(arg1):
+            pass
+        """)
+        expectedFunctions = [('TestPackage.TestModule.TopFunction', ['arg1'], '')]
         assert_that(out['FUNCTIONS'], equal_to(expectedFunctions))
         
         out = self.getModule("""
@@ -262,6 +267,7 @@ class CodeFinderTest(unittest.TestCase):
         self.assertEquals(len(out['CLASSES'].keys()), 1, 'should not count inner classes')
         self.assertEquals(out['CLASSES']['TestPackage.TestModule.A']['methods'], [('level1', [], '')])
         self.assertEquals(out['FUNCTIONS'], [])
+        # TODO incomplete test
 
 
     def testModuleConstants(self):

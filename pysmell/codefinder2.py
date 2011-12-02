@@ -180,61 +180,156 @@ class CodeFinder2(ast.NodeVisitor):
             else:
                 imported = "%s.%s" % (node.module, imported)
             self.modules.addPointer("%s.%s" % (self.modules.currentModule, asName), imported)
-
-
+    
+    def visit_Name(self, node):
+        if isinstance(node.ctx, ast.Store):
+            self.modules.addProperty(None, node.id)
+    
     def visit_FunctionDef(self, node):
-        self.enterScope(node)
-
-        if len(self.scope) == 1:
-            fv = _FunctionVisitor2()
-            fv.generic_visit(node)
-            args = fv.args
-            if (node.args.vararg):
-                args.append("*%s" % node.args.vararg)
-            if (node.args.kwarg):
-                args.append("**%s" % node.args.kwarg)
-            self.modules.addFunction(node.name, args, fv.docstring)
-
-        self.exitScope()
+        self.modules.addFunction(node.name, *parseFunction(node))
         
     def visit_ClassDef(self, node):
         self.enterScope(node)
-        cv = _ClassVisitor2()
+        cv = _ClassVisitor2(node, self.modules)
         cv.generic_visit(node)
         if len(self.scope) == 1:
             self.modules.enterClass(node.name, cv.bases, "")
         
+        for prop in _removeDuplicates(cv.properties):
+            self.modules.addProperty(node.name, prop)
+        
+        for method in cv.methods:
+            self.modules.addMethod(node.name, method[0], *method[1])
+        
         self.exitScope()
 
 class _ClassVisitor2(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, klass, modules):
         self.bases = []
+        self.properties = []
+        self.methods = []
+        self.modules = modules
+        self.klass = klass
+    
+    def qualify(self, name, curModule):
+        if hasattr(__builtin__, name):
+            return name
+        #if name in self.imports:
+        #    return self.imports[name]
+        #for imp in self.imports:
+        #    if name.startswith(imp):
+        #        actual = self.imports[imp]
+        #        return "%s%s" % (actual, name[len(imp):])
+        if curModule:
+            return '%s.%s' % (curModule, name)
+        else:
+            return name
+    
+    def visit_FunctionDef(self, node):
+        if node.name is not "__init__":
+            self.properties.append(node.name)
+            self.methods.append([node.name, parseFunction(node)])
+            
+        ast.NodeVisitor.generic_visit(self, node)
+        
     
     def visit_Name(self, node):
-        self.bases.append(node.id)
+        if isinstance(node.ctx, ast.Store):
+            self.properties.append(node.id)
+        self.bases.append(self.qualify(node.id, self.modules.currentModule))
+    
+    def visit_Attribute(self, node):
+        self.properties.append(node.attr)
 
 class _FunctionVisitor2(ast.NodeVisitor):
     def __init__(self):
-        self.docstring = ""
         self.args = []
+        self._attributes = []
+        self._callArgs = []
     
-    def visit_Str(self, node):
-        """
-        Get the docstring
-        """
-        self.docstring = node.s
+    def generic_visit(self, node):
+        ast.NodeVisitor.generic_visit(self, node)
+    
+    def visit_Call(self, node):
+        for arg in node.args:
+            if isinstance(arg, ast.Num):
+                self._callArgs.append(str(arg.n))
+        ast.NodeVisitor.generic_visit(self, node)
+    
+    def visit_Attribute(self, node):
+        self._attributes.append(node.attr)
         ast.NodeVisitor.generic_visit(self, node)
     
     def visit_Name(self, node):
         """
         Handles function parameters, and adds them to the parameter list.
         """
-        if isinstance(node.ctx, ast.Param):
-            self.args.append(node.id)
-        
-        # Append the default value to the last parameter (there better be a better way to do this)
-        if isinstance(node.ctx, ast.Load):
-            self.args[len(self.args)-1] += "=%s" % node.id
+        # TODO this check can be done way better!
+        if (node.id != "self"):
+            if isinstance(node.ctx, ast.Param):
+                self.args.append(node.id)
+            # Append the default value to the last parameter (there better be a better way to do this)
+            elif isinstance(node.ctx, ast.Load):
+                attrs = ""
+                callArgs = ""
+                if len(self._attributes) > 0:
+                    self._attributes.reverse()
+                    attrs = ".%s" % ".".join(self._attributes)
+                    callArgs = "(%s)" % ",".join(self._callArgs)
+                self.args[len(self.args)-1] += "=%s%s%s" % (node.id, attrs, callArgs)
+                self._attributes = []
+                self._callArgs = []
+            #else:
+            #    print "Name found and ignored: %s of context %s" % (node.id, node.ctx)
+        ast.NodeVisitor.generic_visit(self, node)
+
+def _removeDuplicates(myList):
+    seen = set()
+    seen_add = seen.add
+    return [ x for x in myList if x not in seen and not seen_add(x) ]
+
+def parseFunction(node):
+    """
+    Parse the function using _FunctionVisitor2. Returns a tuple containing a list of args and a docstring.
+    """
+    fv = _FunctionVisitor2()
+    fv.generic_visit(node)
+    args = []
+    
+    for arg in node.args.args:
+        if isinstance(arg, ast.Name):
+            if arg.id != "self":
+                args.append(arg.id)
+        elif isinstance(arg, ast.Tuple):
+            tup = []
+            for element in arg.elts:
+                tup.append(element.id)
+            args.append("("+", ".join(tup)+")")
+        else:
+            print arg
+    
+    offset = 1
+    for default in reversed(node.args.defaults):
+        if isinstance(default, ast.Name):
+            args[-offset] += "=%s" % default.id
+        elif isinstance(default, ast.Str):
+            args[-offset] += "='%s'" % default.s
+        elif isinstance(default, ast.Call):
+            print default.func.attr
+            print default.func.value.attr
+            print default.func.value.value.id
+        else:
+            print default
+        offset += 1
+    
+    if (node.args.vararg):
+        args.append("*%s" % node.args.vararg)
+    if (node.args.kwarg):
+        args.append("**%s" % node.args.kwarg)
+    
+    docstring = ast.get_docstring(node, True)
+    
+    return (args, docstring or "")
 
 
 def getNameTwo(template, left, right, leftJ='', rightJ=''):
