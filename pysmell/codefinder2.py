@@ -229,9 +229,14 @@ class _ClassVisitor2(ast.NodeVisitor):
         if node.name is not "__init__":
             self.properties.append(node.name)
             self.methods.append([node.name, parseFunction(node)])
-            
-        ast.NodeVisitor.generic_visit(self, node)
         
+        fv = _FunctionVisitor2()
+        fv.generic_visit(node)
+        #ast.NodeVisitor.generic_visit(self, node)
+        self.properties.extend(fv.attributes)
+    
+    def visit_ClassDef(self, node):
+        pass # Inner class, 'testNestedStuff' specifies that it should be ignored
     
     def visit_Name(self, node):
         if isinstance(node.ctx, ast.Store):
@@ -244,10 +249,12 @@ class _ClassVisitor2(ast.NodeVisitor):
 class _FunctionVisitor2(ast.NodeVisitor):
     def __init__(self):
         self.args = []
+        self.attributes = []
+        # TODO check the need for both
         self._attributes = []
         self._callArgs = []
     
-    def generic_visit(self, node):
+    def visit_FunctionDef(self, node):
         ast.NodeVisitor.generic_visit(self, node)
     
     def visit_Call(self, node):
@@ -257,6 +264,7 @@ class _FunctionVisitor2(ast.NodeVisitor):
         ast.NodeVisitor.generic_visit(self, node)
     
     def visit_Attribute(self, node):
+        self.attributes.append(node.attr)
         self._attributes.append(node.attr)
         ast.NodeVisitor.generic_visit(self, node)
     
@@ -276,7 +284,7 @@ class _FunctionVisitor2(ast.NodeVisitor):
                     self._attributes.reverse()
                     attrs = ".%s" % ".".join(self._attributes)
                     callArgs = "(%s)" % ",".join(self._callArgs)
-                self.args[len(self.args)-1] += "=%s%s%s" % (node.id, attrs, callArgs)
+          #      self.args[len(self.args)-1] += "=%s%s%s" % (node.id, attrs, callArgs)
                 self._attributes = []
                 self._callArgs = []
             #else:
@@ -301,25 +309,13 @@ def parseFunction(node):
             if arg.id != "self":
                 args.append(arg.id)
         elif isinstance(arg, ast.Tuple):
-            tup = []
-            for element in arg.elts:
-                tup.append(element.id)
-            args.append("("+", ".join(tup)+")")
+            args.append(getValue(arg))
         else:
             print arg
     
     offset = 1
     for default in reversed(node.args.defaults):
-        if isinstance(default, ast.Name):
-            args[-offset] += "=%s" % default.id
-        elif isinstance(default, ast.Str):
-            args[-offset] += "='%s'" % default.s
-        elif isinstance(default, ast.Call):
-            print default.func.attr
-            print default.func.value.attr
-            print default.func.value.value.id
-        else:
-            print default
+        args[-offset] += "=%s" % getValue(default)
         offset += 1
     
     if (node.args.vararg):
@@ -331,6 +327,31 @@ def parseFunction(node):
     
     return (args, docstring or "")
 
+def getValue(node):
+    if isinstance(node, ast.Num):
+        return node.n
+    elif isinstance(node, ast.Str):
+        return "'%s'" % node.s
+    elif isinstance(node, ast.Name):
+        return node.id
+    elif isinstance(node, ast.Call):
+        return "%s(%s)" % (getValue(node.func), ", ".join([str(getValue(n)) for n in node.args]))
+    elif isinstance(node, ast.Attribute):
+        return "%s.%s" % (getValue(node.value), node.attr)
+    elif isinstance(node, ast.Dict):
+        pairs = ["%s: %s" % (getValue(k), getValue(v)) for k, v in zip(node.keys, node.values)]
+        return "{%s}" % (", ".join(pairs))
+    elif isinstance(node, ast.Tuple):
+            return "("+", ".join(getValue(element) for element in node.elts)+")"
+    elif isinstance(node, ast.List):
+        return "["+ ", ".join(getValue(element) for element in node.elts) +"]"
+    elif isinstance(node, ast.Lambda):
+        return "lambda %s: (?)" % (", ".join(parseArguments(node.args)))
+    else:
+        raise TypeError("Unhandled type: %s" % type(node).__name__)
+
+def parseArguments(arguments):
+    return [getValue(arg) for arg in arguments.args]
 
 def getNameTwo(template, left, right, leftJ='', rightJ=''):
     return template % (leftJ.join(map(getName, left)),

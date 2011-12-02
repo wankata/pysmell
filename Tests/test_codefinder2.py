@@ -372,25 +372,26 @@ class CodeFinderTest(unittest.TestCase):
 
 
     def testHierarchy(self):
-        class MockNode(object):
-            node = 1
-        node = MockNode()
+        #class MockNode(object):
+        #    node = 1
+        #node = MockNode()
+        document = ast.parse("""class Foo(): pass""")
         codeFinder = CodeFinder2()
-        codeFinder.visit = lambda _: None
+        #codeFinder.visit = lambda _: None
 
         codeFinder.package = 'TestPackage'
         codeFinder.module = '__init__'
-        codeFinder.visitModule(node)
+        codeFinder.visit(document)
 
         codeFinder.module = 'Modulo'
-        codeFinder.visitModule(node)
+        codeFinder.visit(document)
 
         codeFinder.package = 'TestPackage.Another'
         codeFinder.module = '__init__'
-        codeFinder.visitModule(node)
+        codeFinder.visit(document)
 
         codeFinder.module = 'Moduli'
-        codeFinder.visitModule(node)
+        codeFinder.visit(document)
 
         expected = [
             'TestPackage',
