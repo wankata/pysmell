@@ -131,37 +131,77 @@ class CodeFinderTest(unittest.TestCase):
         """ % name)
         self.assertEquals(out['FUNCTIONS'], [('TestPackage.TestModule.f', ['a=%s' % name], '')])
 
+    def testBinOpNames(self):
+        self.assertNamesIsHandled("s-s")
+        self.assertNamesIsHandled("10*180")
+        self.assertNamesIsHandled("10**180")
+        self.assertNamesIsHandled("10/180")
+        self.assertNamesIsHandled("s%s")
+        self.assertNamesIsHandled("'='+repr(v)")
+    
+    def testBitwiseOpNames(self):
+        self.assertNamesIsHandled("s|s|b")
+        self.assertNamesIsHandled("10>>180")
+        self.assertNamesIsHandled("10<<180")
 
-    def testNames(self):
-        self.assertNamesIsHandled('A.B.C(1)')
-        self.assertNamesIsHandled('A.B.C()')
-        self.assertNamesIsHandled('A.B.C')
+    def testSliceNames(self):
+        self.assertNamesIsHandled("name[1:]")
+        self.assertNamesIsHandled("name[1:2]")
+        self.assertNamesIsHandled("name[:2]")
+        self.assertNamesIsHandled("name[1:2:3]")
+        self.assertNamesIsHandled("name[1::4]")
+        self.assertNamesIsHandled("name[:2:5]")
+        self.assertNamesIsHandled("name[::2]")
+    
+    def testCollectionNames(self):
         self.assertNamesIsHandled('{a: b, c: d}')
         self.assertNamesIsHandled('(a, b, c)')
         self.assertNamesIsHandled('[a, b, c]')
-        self.assertNamesIsHandled('lambda a: (c, b)')
-        self.assertNamesIsHandled("name[1:]")
-        self.assertNamesIsHandled("name[1:2]")
-        self.assertNamesIsHandled("lambda name: name[:1] != '_'")
-        self.assertNamesIsHandled("-180")
-        self.assertNamesIsHandled("not x.ishidden()")
-        self.assertNamesIsHandled("'='+repr(v)")
-        self.assertNamesIsHandled("1L")
+
+	def testPrimitiveNames(self):
+	    self.assertNamesIsHandled("1L")
         self.assertNamesIsHandled("1123.001")
-        self.assertNamesIsHandled("Some(opts=None)")
-        self.assertNamesIsHandled("s%s")
-        self.assertNamesIsHandled("s|s|b")
-        self.assertNamesIsHandled("s-s")
         self.assertNamesIsHandled("''")
+        self.assertNamesIsHandled("-180")
         self.assertNamesIsHandled("'123'")
+    
+    def testAttributeNames(self):
+        self.assertNamesIsHandled('A.B.C')
+        
+    def testCallNames(self):
+        """
+        If this test fails, run 'testAttributeNames', it might be there is's failing.
+        """
+        self.assertNamesIsHandled('A.B.C(1)')
+        self.assertNamesIsHandled('A.B.C()')
+        self.assertNamesIsHandled("Some(opts=None)")
+    
+    def testCompareNames(self):
+        self.assertNamesIsHandled('a == b')
+        self.assertNamesIsHandled('a != b')
+        self.assertNamesIsHandled('a < b')
+        self.assertNamesIsHandled('a > b')
+        self.assertNamesIsHandled('a <= b')
+        self.assertNamesIsHandled('a >= b')
+        self.assertNamesIsHandled('a is b')
+        self.assertNamesIsHandled('a is not b')
+        self.assertNamesIsHandled('a in b')
+        self.assertNamesIsHandled('a not in b')
+    
+    def testLambdaNames(self):
+        """
+        If this test fails, run 'testCompareNames', it might be there is's failing.
+        """
+        self.assertNamesIsHandled('lambda a: (c, b)')
+        self.assertNamesIsHandled("lambda name: name[:1] != '_'")
+    
+    def testUnaryOpNames(self):
+        self.assertNamesIsHandled("not x.ishidden()")
+        # TODO there are operators not tested
+    
+    def testBoolOpNames(self):
         self.assertNamesIsHandled("a or b")
         self.assertNamesIsHandled("a and b")
-        self.assertNamesIsHandled("10*180")
-        self.assertNamesIsHandled("10/180")
-        self.assertNamesIsHandled("10**180")
-        self.assertNamesIsHandled("10>>180")
-        self.assertNamesIsHandled("10<<180")
-        
 
     def testClassProperties(self):
         out = self.getModule("""

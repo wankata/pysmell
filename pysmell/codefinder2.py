@@ -125,6 +125,7 @@ class CodeFinder2(ast.NodeVisitor):
     """
     
     def __init__(self):
+        self.imports = {}
         self.scope = []
         self.modules = ModuleDict()
         self.module = '__module__'
@@ -149,6 +150,20 @@ class CodeFinder2(ast.NodeVisitor):
     def inClassFunction(self):
         return False
     
+    def qualify(self, name, curModule):
+        if hasattr(__builtin__, name):
+            return name
+        if name in self.imports:
+            return self.imports[name]
+        for imp in self.imports:
+            if name.startswith(imp):
+                actual = self.imports[imp]
+                return "%s%s" % (actual, name[len(imp):])
+        if curModule:
+            return '%s.%s' % (curModule, name)
+        else:
+            return name
+    
     def isRelativeImport(self, imported):
         pathToImport = os.path.join(self.path, *imported.split('.'))
         return os.path.exists(pathToImport) or os.path.exists(pathToImport + '.py')
@@ -166,6 +181,8 @@ class CodeFinder2(ast.NodeVisitor):
         for name in node.names:
             imported = name.name
             asName = name.asname or name.name
+            
+            self.imports[asName] = imported
             if self.isRelativeImport(imported):
                 imported = "%s%s" % (self.package, imported)
             self.modules.addPointer("%s.%s" % (self.modules.currentModule, asName), imported)
@@ -174,11 +191,14 @@ class CodeFinder2(ast.NodeVisitor):
         for name in node.names:
             asName = name.asname or name.name
             imported = name.name
+            
             # TODO suspicious use of node.module (there's a ? at the property in the documentation)
             if self.isRelativeImport(node.module):
                 imported = "%s%s.%s" % (self.package, node.module, imported)
             else:
                 imported = "%s.%s" % (node.module, imported)
+            
+            self.imports[asName] = imported
             self.modules.addPointer("%s.%s" % (self.modules.currentModule, asName), imported)
     
     def visit_Name(self, node):
@@ -190,10 +210,12 @@ class CodeFinder2(ast.NodeVisitor):
         
     def visit_ClassDef(self, node):
         self.enterScope(node)
+        bases = [self.qualify(getValue(base), self.modules.currentModule) for base in node.bases]
+        
         cv = _ClassVisitor2(node, self.modules)
         cv.generic_visit(node)
         if len(self.scope) == 1:
-            self.modules.enterClass(node.name, cv.bases, "")
+            self.modules.enterClass(node.name, bases, ast.get_docstring(node, True) or '')
         
         for prop in _removeDuplicates(cv.properties):
             self.modules.addProperty(node.name, prop)
@@ -299,11 +321,11 @@ def _removeDuplicates(myList):
 def parseFunction(node):
     """
     Parse the function using _FunctionVisitor2. Returns a tuple containing a list of args and a docstring.
-    """
-    fv = _FunctionVisitor2()
-    fv.generic_visit(node)
-    args = []
     
+    Returns: a tuple containing the
+    """
+    
+    args = []
     for arg in node.args.args:
         if isinstance(arg, ast.Name):
             if arg.id != "self":
@@ -328,14 +350,34 @@ def parseFunction(node):
     return (args, docstring or "")
 
 def getValue(node):
-    if isinstance(node, ast.Num):
-        return node.n
+    """
+    Tries to get a sensible value out of a node, such as getting the value of a function argument
+    and similar.
+    
+    Example of usage:
+    """
+    
+    if node is None: return ''
+    elif isinstance(node, ast.Num):
+        if isinstance(node.n, long):
+            return str(node.n)+"L"
+        return str(node.n)
     elif isinstance(node, ast.Str):
         return "'%s'" % node.s
     elif isinstance(node, ast.Name):
         return node.id
     elif isinstance(node, ast.Call):
-        return "%s(%s)" % (getValue(node.func), ", ".join([str(getValue(n)) for n in node.args]))
+        args = []
+        for arg in node.args:
+            args.append(getValue(arg))
+        
+        for keyword in node.keywords:
+            args.append(getValue(keyword))
+        # ignoring node.starargs
+        if node.kwargs:
+            args.append("**" + node.kwargs)
+        # [str(getValue(n)) for n in node.args]
+        return "%s(%s)" % (getValue(node.func), ", ".join(args))
     elif isinstance(node, ast.Attribute):
         return "%s.%s" % (getValue(node.value), node.attr)
     elif isinstance(node, ast.Dict):
@@ -346,8 +388,30 @@ def getValue(node):
     elif isinstance(node, ast.List):
         return "["+ ", ".join(getValue(element) for element in node.elts) +"]"
     elif isinstance(node, ast.Lambda):
-        return "lambda %s: (?)" % (", ".join(parseArguments(node.args)))
+        return "lambda %s: %s" % (", ".join(parseArguments(node.args)), getValue(node.body))
+    elif isinstance(node, ast.Subscript):
+        return "%s%s" % (getValue(node.value), getValue(node.slice))
+    elif isinstance(node, ast.Slice):
+        step = ""
+        if node.step: step = ":%s" % getValue(node.step)
+        return "[%s:%s%s]" % (getValue(node.lower), getValue(node.upper), step)
+    elif isinstance(node, ast.keyword):
+        return "%s=%s" % (node.arg, getValue(node.value))
+    elif isinstance(node, ast.BoolOp):
+        if isinstance(node.op, ast.Or):
+            op = 'or'
+        elif isinstance(node.op, ast.And):
+            op = 'and'
+        else:
+            raise TypeError("Boolean operator not recognized: " + node.op)
+        
+        return "%s %s %s" % (getValue(node.values[0]), op, getValue(node.values[1]))
+    elif isinstance(node, ast.UnaryOp):
+        if isinstance(node.op, ast.Not):
+            op = 'not'
+        return "%s %s" % (op, getValue(node.operand))
     else:
+        print node
         raise TypeError("Unhandled type: %s" % type(node).__name__)
 
 def parseArguments(arguments):
