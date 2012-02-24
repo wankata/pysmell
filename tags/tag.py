@@ -6,7 +6,9 @@ import settings
 
 def run(command):
     proc = Popen(command.split(' '), stdout=PIPE)
-    print proc.communicate()[0]
+    output = proc.communicate()[0]
+    if output.strip():
+        print output
 
 def rmtags():
     for root, dirs, files in os.walk('.'):
