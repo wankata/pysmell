@@ -249,7 +249,7 @@ class _ClassVisitor2(ast.NodeVisitor):
     
     def visit_FunctionDef(self, node):
         if node.name is not "__init__":
-            self.properties.append(node.name)
+    #        self.properties.append(node.name)
             self.methods.append([node.name, parseFunction(node)])
         
         fv = _FunctionVisitor2()
@@ -410,6 +410,13 @@ def getValue(node):
         if isinstance(node.op, ast.Not):
             op = 'not'
         return "%s %s" % (op, getValue(node.operand))
+    elif isinstance(node, ast.Compare):
+        ops = "".join(COMPARENODES[op.__class__] for op in node.ops)
+        comparators = "".join(getValue(comparator) for comparator in node.comparators)
+
+        return "%s %s %s" % (getValue(node.left), ops, comparators)
+    elif isinstance(node, ast.BinOp):
+      return "%s%s%s" % (getValue(node.left), OPERATORS[node.op.__class__], getValue(node.right))
     else:
         print node
         raise TypeError("Unhandled type: %s" % type(node).__name__)
@@ -432,6 +439,37 @@ def getNameTwo(template, left, right, leftJ='', rightJ=''):
 
 def getNameMath(node):
     return '%s%s%s' % (getName(node.left), MATHNODES[node.__class__], getName(node.right))
+
+COMPARENODES = {
+    ast.Eq: '==',
+    ast.NotEq: "!=",
+    ast.Lt: "<",
+    ast.LtE: "<=",
+    ast.Gt: ">",
+    ast.GtE: ">=",
+    ast.Is: "is",
+    ast.IsNot: "is not",
+    ast.In: "in",
+    ast.NotIn: "not in",
+}
+
+OPERATORS = {
+    ast.BitOr: "|",
+    ast.Add: "+",
+    ast.Sub: "-",
+    ast.Mult: "*",
+    ast.Div: "/",
+    ast.Mod: "%",
+    ast.Pow: "**",
+    ast.LShift: "<<",
+    ast.RShift: ">>",
+    ast.BitOr: "|",
+# TODO what about these?
+    ast.BitXor: "",
+    ast.BitAnd: "",
+    ast.FloorDiv: "",
+}
+
 
 
 def getName(node):

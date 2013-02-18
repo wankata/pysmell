@@ -216,6 +216,7 @@ class CodeFinderTest(unittest.TestCase):
         """)
         expectedProps = ['classprop', 'plainprop', 'methodProp']
         assert_that(out['CLASSES']['TestPackage.TestModule.A']['properties'], equal_to(expectedProps))
+        #print(out['CLASSES']['TestPackage.TestModule.A']['methods'])
 
 
     def testClassMethods(self):
@@ -442,7 +443,6 @@ class CodeFinderTest(unittest.TestCase):
         self.assertEquals(codeFinder.modules['HIERARCHY'], expected)
         
 
-        
 
 class InferencingTest(unittest.TestCase):
     def testInferSelfSimple(self):
