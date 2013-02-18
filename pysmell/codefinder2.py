@@ -596,48 +596,30 @@ def processFile(f, path):
 def analyzeFile(fullPath, tree):
     if tree is None:
         return None
-    codeFinder = CodeFinder()
+    codeFinder = CodeFinder2()
+    tree = ast.parse(tree, "Test code")
+
     absPath, filename = os.path.split(fullPath)
     codeFinder.module = filename[:-3]
     codeFinder.path = absPath
-    packages = findRootPackageList(path, "")
+
+    packages = findRootPackageList(absPath, "")
     package = '.'.join(packages)
     #package = findPackage(absPath)
+
     codeFinder.package = package
-    compiler.walk(tree, codeFinder)
+    codeFinder.visit(tree)
     return codeFinder.modules
-
-def getSafeTree(source, lineNo):
-    source = source.replace('\r\n', '\n')
-    try:
-        tree = compiler.parse(source)
-    except:
-        sourceLines = source.splitlines()
-        line = sourceLines[lineNo-1]
-        unindented = line.lstrip()
-        indentation = len(line) - len(unindented)
-        whitespace = ' '
-        if line.startswith('\t'):
-            whitespace = '\t'
-        sourceLines[lineNo-1] = '%spass' % (whitespace * indentation)
-
-        replacedSource = '\n'.join(sourceLines)
-        try:
-            tree = compiler.parse(replacedSource)
-        except SyntaxError, e:
-            print >> sys.stderr, e.args
-            return None
-
-    return tree
 
 def getNames(tree):
     if tree is None:
         return None
-    inferer = NameVisitor()
-    compiler.walk(tree, inferer)
-    names = inferer.names
-    names.update(inferer.imports)
-    return names, inferer.klasses
+    #inferer = NameVisitor()
+    #compiler.walk(tree, inferer)
+    #names = inferer.names
+    #names.update(inferer.imports)
+    #return names, inferer.klasses
+    return None
 
 def getImports(tree):
     if tree is None:
@@ -652,14 +634,13 @@ def getClassAndParents(tree, lineNo):
     if tree is None:
         return None, []
 
-    inferer = SelfInferer()
-    compiler.walk(tree, inferer)
-    classRanges = inferer.classRanges
-    classRanges.sort(sortClassRanges)
+    # inferer.visit?
+    #classRanges = inferer.classRanges
+    #classRanges.sort(sortClassRanges)
     
-    for klass, parents, start, end in classRanges:
-        if lineNo >= start:
-            return klass, parents
+    #for klass, parents, start, end in classRanges:
+    #    if lineNo >= start:
+    #        return klass, parents
     return None, []
 
 def sortClassRanges(a, b):
