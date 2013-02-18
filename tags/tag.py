@@ -6,7 +6,9 @@ import settings
 
 def run(command):
     proc = Popen(command.split(' '), stdout=PIPE)
-    print proc.communicate()[0]
+    output = proc.communicate()[0]
+    if output.strip():
+        print output
 
 def rmtags():
     for root, dirs, files in os.walk('.'):
@@ -17,8 +19,7 @@ def rmtags():
 def mktags():
     rmtags()
 
-    path = '{0}/lib/python{1.major}.{1.minor}/site-packages'.format(os.environ['VIRTUAL_ENV'], sys.version_info)
-    #packages = ['fabric', ]
+    path = '{0}/lib/python{1}.{2}/site-packages'.format(os.environ['VIRTUAL_ENV'], *sys.version_info[:2])
 
     for package in settings.packages:
         run('ctags -aR %(path)s/%(package)s' % locals())
