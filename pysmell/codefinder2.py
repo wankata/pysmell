@@ -1,7 +1,6 @@
 # codefinder2.py
 # Statically analyze python code
 #
-#
 # Copyright (C) 2011 by Rohde Fischer <rohdef@rohdef.dk> www.rohdef.dk
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -249,7 +248,8 @@ class _ClassVisitor2(ast.NodeVisitor):
     
     def visit_FunctionDef(self, node):
         if node.name is not "__init__":
-    #        self.properties.append(node.name)
+            # TODO related to OldDecorator test 
+            self.properties.append(node.name)
             self.methods.append([node.name, parseFunction(node)])
         
         fv = _FunctionVisitor2()
@@ -266,7 +266,8 @@ class _ClassVisitor2(ast.NodeVisitor):
         self.bases.append(self.qualify(node.id, self.modules.currentModule))
     
     def visit_Attribute(self, node):
-        self.properties.append(node.attr)
+        # Ignored according to testAbsoluteImports 
+        pass
 
 class _FunctionVisitor2(ast.NodeVisitor):
     def __init__(self):
