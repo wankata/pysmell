@@ -11,4 +11,4 @@ class PrintOut():
         pass
 
     def write(self, output):
-        print output
+        print(output)

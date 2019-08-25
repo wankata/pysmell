@@ -4,7 +4,7 @@
 # Copyright (C) 2008 Orestis Markou
 # All rights reserved
 
-import cPickle as pickle
+import pickle as pickle
 import os
 
 version = __import__('pysmell').__version__

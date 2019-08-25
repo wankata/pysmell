@@ -8,7 +8,7 @@ class MatcherTest(unittest.TestCase):
             expected = groups.split()
             actual = list(camelGroups(word))
             msg = "expected %s, but got %s camelGroups" % (expected, actual)
-            self.assertEquals(actual, expected, msg)
+            self.assertEqual(actual, expected, msg)
         assertCamelGroups('alaMaKota', 'ala Ma Kota')
         assertCamelGroups('AlaMaKota', 'Ala Ma Kota')
         assertCamelGroups('isHTML', 'is H T M L')

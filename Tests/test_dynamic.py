@@ -1,7 +1,7 @@
 import unittest
 from pysmell.dynamic import get_dynamic_tags
 
-from test_tags import TestCase
+from .test_tags import TestCase
 
 class DynamicTagsTest(TestCase):
 
@@ -34,7 +34,7 @@ the same signature (a get() function and a name for the object).""",
 
     def testOs(self):
         d = get_dynamic_tags('os')
-        print d._modules
+        print(d._modules)
         self.fail()
 
 if __name__ == '__main__':

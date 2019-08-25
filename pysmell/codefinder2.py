@@ -24,7 +24,7 @@
 
 import os
 import sys
-import __builtin__
+import builtins
 import ast
 
 class ModuleDict(dict):
@@ -83,22 +83,22 @@ class ModuleDict(dict):
             self['POINTERS'].update(other['POINTERS'])
 
     def keys(self):
-        return self._modules.keys()
+        return list(self._modules.keys())
 
     def values(self):
-        return self._modules.values()
+        return list(self._modules.values())
 
     def items(self):
-        return self._modules.items()
+        return list(self._modules.items())
 
     def iteritems(self):
-        return self._modules.iteritems()
+        return iter(self._modules.items())
 
     def __getitem__(self, item):
         return self._modules[item]
 
     def __len__(self):
-        return len(self.keys())
+        return len(list(self.keys()))
 
     def __eq__(self, other):
         return ((isinstance(other, ModuleDict) and other._modules == self._modules) or
@@ -334,7 +334,7 @@ def parseFunction(node):
         elif isinstance(arg, ast.Tuple):
             args.append(getValue(arg))
         else:
-            print arg
+            print(arg)
     
     offset = 1
     for default in reversed(node.args.defaults):
@@ -360,7 +360,7 @@ def getValue(node):
     
     if node is None: return ''
     elif isinstance(node, ast.Num):
-        if isinstance(node.n, long):
+        if isinstance(node.n, int):
             return str(node.n)+"L"
         return str(node.n)
     elif isinstance(node, ast.Str):
@@ -419,7 +419,7 @@ def getValue(node):
     elif isinstance(node, ast.BinOp):
       return "%s%s%s" % (getValue(node.left), OPERATORS[node.op.__class__], getValue(node.right))
     else:
-        print node
+        print(node)
         raise TypeError("Unhandled type: %s" % type(node).__name__)
 
 def parseArguments(arguments):
@@ -475,7 +475,7 @@ OPERATORS = {
 
 def getName(node):
     if node is None: return ''
-    if isinstance(node, (basestring, int, long, float)):
+    if isinstance(node, (str, int, float)):
         return str(node)
     if isinstance(node, (ast.Class, ast.Name, ast.Function)):
         return node.name
@@ -586,11 +586,11 @@ def processFile(f, path):
         assert os.path.isabs(path), "path should be absolute"
         modules = getClassDict(os.path.join(path, f), codeFinder)
         return modules
-    except Exception, e:
-        print '-=#=- '* 10
-        print 'EXCEPTION in', os.path.join(path, f)
-        print e
-        print '-=#=- '* 10
+    except Exception as e:
+        print('-=#=- '* 10)
+        print('EXCEPTION in', os.path.join(path, f))
+        print(e)
+        print('-=#=- '* 10)
         return None
 
 

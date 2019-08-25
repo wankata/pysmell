@@ -20,7 +20,7 @@ except:
         return True
 
 def item(val):
-    if isinstance(val, basestring):
+    if isinstance(val, str):
         return {"title": val}
     if isinstance(val, tuple):
         return {"title": val[0]}

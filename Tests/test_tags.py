@@ -25,18 +25,18 @@ class ProducesFile(object):
 
 class TestCase(unittest.TestCase):
     def assertDictsEqual(self, actualDict, expectedDict):
-        self.assertEquals(len(actualDict.keys()), len(expectedDict.keys()),
-            "dicts don't have equal number of keys: %r != %r" % (actualDict.keys(), expectedDict.keys()))
-        self.assertEquals(set(actualDict.keys()), set(expectedDict.keys()), "dicts don't have equal keys")
-        for key, value in actualDict.items():
+        self.assertEqual(len(list(actualDict.keys())), len(list(expectedDict.keys())),
+            "dicts don't have equal number of keys: %r != %r" % (list(actualDict.keys()), list(expectedDict.keys())))
+        self.assertEqual(set(actualDict.keys()), set(expectedDict.keys()), "dicts don't have equal keys")
+        for key, value in list(actualDict.items()):
             if isinstance(value, dict):
                 self.assertTrue(isinstance(expectedDict[key], dict), "incompatible types found for key %s" % key)
                 self.assertDictsEqual(value, expectedDict[key])
             elif isinstance(value, list):
                 self.assertTrue(isinstance(expectedDict[key], list), "incompatible types found for key %s" % key)
-                self.assertEquals(sorted(value), sorted(expectedDict[key]), 'wrong sorted(list) for key %s:\n%r != %r' % (key, value, expectedDict[key]))
+                self.assertEqual(sorted(value), sorted(expectedDict[key]), 'wrong sorted(list) for key %s:\n%r != %r' % (key, value, expectedDict[key]))
             else:
-                self.assertEquals(value, expectedDict[key], "wrong value for key %s: \n%s != %s" % (key, value, expectedDict[key]))
+                self.assertEqual(value, expectedDict[key], "wrong value for key %s: \n%s != %s" % (key, value, expectedDict[key]))
 
 
 
@@ -249,7 +249,7 @@ class FunctionalTest(TestCase):
                        package [package ...]
         pysmell: error: too few arguments
         """)
-        self.assertEquals(stderr.replace('\r\n', '\n'), expected)
+        self.assertEqual(stderr.replace('\r\n', '\n'), expected)
 
 
     def DONTtestDunderAll(self):

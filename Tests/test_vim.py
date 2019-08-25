@@ -30,37 +30,37 @@ class VimHelperTest(unittest.TestCase):
         self.vim.current.buffer = ['aaaa', 'bbbb', 'cccc']
         self.vim.current.window.cursor =(2, 2)
         word = findWord(self.vim, 2, 'bbbb')
-        self.assertEquals(word, 'bb')
+        self.assertEqual(word, 'bb')
 
     def testFindBaseMethodCall(self):
         self.vim.current.buffer = ['aaaa', 'a.bbbb(', 'cccc']
         self.vim.current.window.cursor =(2, 7)
         word = findWord(self.vim, 7, 'a.bbbb(')
-        self.assertEquals(word, 'a.bbbb(')
+        self.assertEqual(word, 'a.bbbb(')
 
     def testFindBaseFuncCall(self):
         self.vim.current.buffer = ['aaaa', 'bbbb(', 'cccc']
         self.vim.current.window.cursor =(2, 5)
         word = findWord(self.vim, 5, 'bbbb(')
-        self.assertEquals(word, 'bbbb(')
+        self.assertEqual(word, 'bbbb(')
 
     def testFindBaseNameIndent(self):
         self.vim.current.buffer = ['aaaa', '    bbbb', 'cccc']
         self.vim.current.window.cursor =(2, 6)
         word = findWord(self.vim, 6, '    bbbb')
-        self.assertEquals(word, 'bb')
+        self.assertEqual(word, 'bb')
 
     def testFindBaseProp(self):
         self.vim.current.buffer = ['aaaa', 'hehe.bbbb', 'cccc']
         self.vim.current.window.cursor =(2, 7)
         word = findWord(self.vim, 7, 'hehe.bbbb')
-        self.assertEquals(word, 'hehe.bb')
+        self.assertEqual(word, 'hehe.bb')
 
     def testFindBasePropIndent(self):
         self.vim.current.buffer = ['aaaa', '    hehe.bbbb', 'cccc']
         self.vim.current.window.cursor =(2, 11)
         word = findWord(self.vim, 11, '    hehe.bbbb')
-        self.assertEquals(word, 'hehe.bb')
+        self.assertEqual(word, 'hehe.bb')
 
 class VimTest(unittest.TestCase):
     def testVimFunctionally(self):

@@ -10,7 +10,7 @@
 
 import os
 import sys
-import __builtin__
+import builtins
 import compiler
 
 from compiler import ast
@@ -71,22 +71,22 @@ class ModuleDict(dict):
             self['POINTERS'].update(other['POINTERS'])
 
     def keys(self):
-        return self._modules.keys()
+        return list(self._modules.keys())
 
     def values(self):
-        return self._modules.values()
+        return list(self._modules.values())
 
     def items(self):
-        return self._modules.items()
+        return list(self._modules.items())
 
     def iteritems(self):
-        return self._modules.iteritems()
+        return iter(self._modules.items())
 
     def __getitem__(self, item):
         return self._modules[item]
 
     def __len__(self):
-        return len(self.keys())
+        return len(list(self.keys()))
 
     def __eq__(self, other):
         return ((isinstance(other, ModuleDict) and other._modules == self._modules) or
@@ -283,7 +283,7 @@ def getNameMath(node):
 
 def getName(node):
     if node is None: return ''
-    if isinstance(node, (basestring, int, long, float)):
+    if isinstance(node, (str, int, float)):
         return str(node)
     if isinstance(node, (ast.Class, ast.Name, ast.Function)):
         return node.name
@@ -352,7 +352,7 @@ def argToStr(arg):
             
 
 def getFuncArgs(func, inClass=True):
-    args = map(argToStr, func.argnames[:])
+    args = list(map(argToStr, func.argnames[:]))
     if func.kwargs and func.varargs:
         args[-1] = '**' + args[-1]
         args[-2] = '*' + args[-2]
@@ -416,11 +416,11 @@ def processFile(f, path):
         assert os.path.isabs(path), "path should be absolute"
         modules = getClassDict(os.path.join(path, f), codeFinder)
         return modules
-    except Exception, e:
-        print '-=#=- '* 10
-        print 'EXCEPTION in', os.path.join(path, f)
-        print e
-        print '-=#=- '* 10
+    except Exception as e:
+        print('-=#=- '* 10)
+        print('EXCEPTION in', os.path.join(path, f))
+        print(e)
+        print('-=#=- '* 10)
         return None
 
 
@@ -485,8 +485,8 @@ def getSafeTree(source, lineNo):
         replacedSource = '\n'.join(sourceLines)
         try:
             tree = compiler.parse(replacedSource)
-        except SyntaxError, e:
-            print >> sys.stderr, e.args
+        except SyntaxError as e:
+            print(e.args, file=sys.stderr)
             return None
 
     return tree

@@ -9,7 +9,7 @@
 
 # Released subject to the BSD License 
 
-import cPickle as pickle
+import pickle as pickle
 import os
 import sys
 from textwrap import dedent
@@ -68,7 +68,7 @@ def process(filesOrDirectories, excluded=[], inputDict=None, verbose=False):
                 for exc in excluded:
                     if exc in dirs:
                         if verbose:
-                            print 'removing', exc, 'in', path
+                            print('removing', exc, 'in', path)
                         dirs.remove(exc)
                 for f in files:
                     if not f.endswith(".py"):
@@ -76,7 +76,7 @@ def process(filesOrDirectories, excluded=[], inputDict=None, verbose=False):
                     #path here is relative, make it absolute
                     absPath = os.path.abspath(path)
                     if verbose:
-                        print 'processing', absPath, f
+                        print('processing', absPath, f)
                     newmodules = processFile(f, absPath)
                     modules.update(newmodules)
         else: # single file
@@ -89,7 +89,7 @@ def process(filesOrDirectories, excluded=[], inputDict=None, verbose=False):
                 
             #path here is absolute
             if verbose:
-                print 'processing', absPath, filename
+                print('processing', absPath, filename)
             newmodules = processFile(filename, absPath)
             modules.update(newmodules)
             
@@ -130,7 +130,7 @@ def main():
         try:
             inputDict = eval(file(inputFile).read())
         except:
-            print >> sys.stderr, "Could not process %s - is it a PYSMELLTAGS file?" % inputFile
+            print("Could not process %s - is it a PYSMELLTAGS file?" % inputFile, file=sys.stderr)
             sys.exit(3)
     else:
         inputDict = None
@@ -140,8 +140,8 @@ def main():
         import time
         start = time.clock()
     if verbose:
-        print 'processing', fileList
-        print 'ignoring', excluded
+        print('processing', fileList)
+        print('ignoring', excluded)
     modules = process(fileList, excluded, inputDict=inputDict, verbose=verbose)
 
     if (pickle):
@@ -154,7 +154,7 @@ def main():
 #    generateClassTag(modules, output)
     if timing:
         took = time.clock() - start
-        print 'took %f seconds' % took
+        print('took %f seconds' % took)
 
 
 if __name__ == '__main__':

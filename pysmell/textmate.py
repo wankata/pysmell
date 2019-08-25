@@ -62,7 +62,7 @@ def _main(cur_file, line_no, cur_col):
         ]
         try:
             compIndex = tm_dialog.menu(dialogTuples)
-        except Exception, e:
+        except Exception as e:
             import traceback
             write(traceback.format_exc(e))
             return TOOLTIP

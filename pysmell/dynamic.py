@@ -35,7 +35,7 @@ def get_dynamic_tags(module, visited_modules=None):
     if visited_modules == None:
         visited_modules = set()
     mod = __import__(module)
-    print 'dynamic tags of', module
+    print('dynamic tags of', module)
     visited_modules.add(module)
     attrs = [a for a in dir(mod) if not a.startswith('__')]
     pysmelld = ModuleDict()

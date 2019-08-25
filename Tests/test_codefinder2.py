@@ -16,7 +16,7 @@ class ModuleDictTest(unittest.TestCase):
         total.enterModule('mod2')
         total.enterClass('cls2', [], 'doc2')
 
-        self.assertEquals(pformat(total), pformat(total._modules))
+        self.assertEqual(pformat(total), pformat(total._modules))
 
         md1 = ModuleDict()
         md1.enterModule('mod1')
@@ -28,16 +28,16 @@ class ModuleDictTest(unittest.TestCase):
 
         md3 = ModuleDict()
         md3.update(md1)
-        self.assertEquals(pformat(md3), pformat(md1))
+        self.assertEqual(pformat(md3), pformat(md1))
         md3.update(md2)
-        self.assertEquals(pformat(md3), pformat(total))
+        self.assertEqual(pformat(md3), pformat(total))
         md3.update(None)
-        self.assertEquals(pformat(md3), pformat(total))
+        self.assertEqual(pformat(md3), pformat(total))
 
     def testAddPointer(self):
         md = ModuleDict()
         md.addPointer('something', 'other')
-        self.assertEquals(md['POINTERS'], {'something': 'other'})
+        self.assertEqual(md['POINTERS'], {'something': 'other'})
 
 
 class CodeFinderTest(unittest.TestCase):
@@ -51,9 +51,9 @@ class CodeFinderTest(unittest.TestCase):
         try:
             return eval(pformat(codeFinder.modules))
         except:
-            print 'EXCEPTION WHEN EVALING:'
-            print pformat(codeFinder.modules)
-            print '=-' * 20
+            print('EXCEPTION WHEN EVALING:')
+            print(pformat(codeFinder.modules))
+            print('=-' * 20)
             raise
 
 
@@ -70,7 +70,7 @@ class CodeFinderTest(unittest.TestCase):
         expected = {'CLASSES': {'TestPackage.A': dict(docstring='', bases=['object'], constructor=[], methods=[], properties=[])},
             'FUNCTIONS': [], 'CONSTANTS': [], 'POINTERS': {}, 'HIERARCHY': ['TestPackage']}
         actual = eval(pformat(codeFinder.modules))
-        self.assertEquals(actual, expected)
+        self.assertEqual(actual, expected)
 
 
     def assertClasses(self, moduleDict, expected):
@@ -102,7 +102,7 @@ class CodeFinderTest(unittest.TestCase):
             pass
         """)
         expected = ('TestPackage.TestModule.function', ['a=1', 'b=2', 'c=None', 'd=4', "e='string'", 'f=Name', 'g={}'], '')
-        self.assertEquals(out['FUNCTIONS'], [expected])
+        self.assertEqual(out['FUNCTIONS'], [expected])
 
 
     def testOldStyleDecoratorProperties(self):
@@ -122,14 +122,14 @@ class CodeFinderTest(unittest.TestCase):
             tree = ast.parse(name)
             source = ModuleSourceCodeGenerator(tree).getSourceCode()[:-1] #strip newline
             if source != name:
-                print 'pycodegen: %s != %s' % (source, name)
+                print('pycodegen: %s != %s' % (source, name))
         except ImportError:
             pass
         out = self.getModule("""
         def f(a=%s):
             pass
         """ % name)
-        self.assertEquals(out['FUNCTIONS'], [('TestPackage.TestModule.f', ['a=%s' % name], '')])
+        self.assertEqual(out['FUNCTIONS'], [('TestPackage.TestModule.f', ['a=%s' % name], '')])
 
     def testBinOpNames(self):
         self.assertNamesIsHandled("s-s")
@@ -249,7 +249,7 @@ class CodeFinderTest(unittest.TestCase):
                            ('methodAll', ['arg1', '*args', '**kwargs'], ''),
                            ('methodReallyAll', ['arg1', "arg2='a string'", '*args', '**kwargs'], ''),
                            ]
-        self.assertEquals(out['CLASSES']['TestPackage.TestModule.A']['methods'], expectedMethods)
+        self.assertEqual(out['CLASSES']['TestPackage.TestModule.A']['methods'], expectedMethods)
 
     def test_SimpleTopLevelFunction(self):
         out = self.getModule("""
@@ -305,9 +305,9 @@ class CodeFinderTest(unittest.TestCase):
                 def innerMethod(self):
                     pass
         """)
-        self.assertEquals(len(out['CLASSES'].keys()), 1, 'should not count inner classes')
-        self.assertEquals(out['CLASSES']['TestPackage.TestModule.A']['methods'], [('level1', [], '')])
-        self.assertEquals(out['FUNCTIONS'], [])
+        self.assertEqual(len(list(out['CLASSES'].keys())), 1, 'should not count inner classes')
+        self.assertEqual(out['CLASSES']['TestPackage.TestModule.A']['methods'], [('level1', [], '')])
+        self.assertEqual(out['FUNCTIONS'], [])
         # TODO incomplete test
 
 
@@ -315,14 +315,14 @@ class CodeFinderTest(unittest.TestCase):
         out = self.getModule("""
         CONSTANT = 1
         """)
-        self.assertEquals(out['CONSTANTS'], ['TestPackage.TestModule.CONSTANT'])
+        self.assertEqual(out['CONSTANTS'], ['TestPackage.TestModule.CONSTANT'])
 
 
     def testArgToStr(self):
-        self.assertEquals(argToStr('stuff'), 'stuff')
-        self.assertEquals(argToStr(('ala', 'ma', 'kota')), '(ala, ma, kota)')
-        self.assertEquals(argToStr((('x1', 'y1'), ('x2', 'y2'))), '((x1, y1), (x2, y2))')
-        self.assertEquals(argToStr(('ala',)), '(ala,)')
+        self.assertEqual(argToStr('stuff'), 'stuff')
+        self.assertEqual(argToStr(('ala', 'ma', 'kota')), '(ala, ma, kota)')
+        self.assertEqual(argToStr((('x1', 'y1'), ('x2', 'y2'))), '((x1, y1), (x2, y2))')
+        self.assertEqual(argToStr(('ala',)), '(ala,)')
 
 
     def testTrickyBases(self):
@@ -333,7 +333,7 @@ class CodeFinderTest(unittest.TestCase):
             class A(Nyer, AClass):
                 pass
         """)
-        self.assertEquals(out['CLASSES']['TestPackage.TestModule.A'],
+        self.assertEqual(out['CLASSES']['TestPackage.TestModule.A'],
                         dict(constructor=[], methods=[], properties=[], docstring='',
                         bases=['TestPackage.AnotherModule.AnotherClass', 'TestPackage.AnotherModule.AClass'])
         )
@@ -346,7 +346,7 @@ class CodeFinderTest(unittest.TestCase):
             class A(TestPackage.AnotherModule.AClass, Hmer.AnotherModule.AnotherClass):
                 pass
         """)
-        self.assertEquals(out['CLASSES']['TestPackage.TestModule.A'],
+        self.assertEqual(out['CLASSES']['TestPackage.TestModule.A'],
                         dict(constructor=[], methods=[], properties=[], docstring='',
                         bases=['TestPackage.AnotherModule.AClass', 'TestPackage.AnotherModule.AnotherClass'])
         )
@@ -356,7 +356,7 @@ class CodeFinderTest(unittest.TestCase):
             from somewhere.something import other as mother
             import somewhere.something as thing
         """)
-        self.assertEquals(out['POINTERS'],
+        self.assertEqual(out['POINTERS'],
             {
                 'TestPackage.TestModule.mother': 'somewhere.something.other',
                 'TestPackage.TestModule.thing': 'somewhere.something',
@@ -440,7 +440,7 @@ class CodeFinderTest(unittest.TestCase):
             'TestPackage.Another',
             'TestPackage.Another.Moduli',
         ]
-        self.assertEquals(codeFinder.modules['HIERARCHY'], expected)
+        self.assertEqual(codeFinder.modules['HIERARCHY'], expected)
         
 
 
@@ -457,8 +457,8 @@ class InferencingTest(unittest.TestCase):
             \t\tpass
         """)
         klass, parents = getClassAndParents(source, 5)
-        self.assertEquals(klass, 'AClass')
-        self.assertEquals(parents, ['object'])
+        self.assertEqual(klass, 'AClass')
+        self.assertEqual(parents, ['object'])
 
 
     def testInferParents(self):
@@ -474,8 +474,8 @@ class InferencingTest(unittest.TestCase):
                     pass
         """)
         klass, parents = getClassAndParents(source, 6)
-        self.assertEquals(klass, 'AClass')
-        self.assertEquals(parents, ['something.mother', 'something.father'])
+        self.assertEqual(klass, 'AClass')
+        self.assertEqual(parents, ['something.mother', 'something.father'])
 
 
     def testInferParentsTricky(self):
@@ -489,8 +489,8 @@ class InferencingTest(unittest.TestCase):
                 def another(self):
                     pass""")
         klass, parents = getClassAndParents(source, 5)
-        self.assertEquals(klass, 'AClass')
-        self.assertEquals(parents, ['something.this.other.bother'])
+        self.assertEqual(klass, 'AClass')
+        self.assertEqual(parents, ['something.this.other.bother'])
 
 
     def testInferSelfMultipleClasses(self):
@@ -522,30 +522,30 @@ class InferencingTest(unittest.TestCase):
                         self.ass
         """)
         
-        self.assertEquals(getClassAndParents(source, 1)[0], None, 'no class yet!')
+        self.assertEqual(getClassAndParents(source, 1)[0], None, 'no class yet!')
         for line in range(2, 5):
             klass, _ = getClassAndParents(source, line)
-            self.assertEquals(klass, 'AClass', 'wrong class %s in line %d' % (klass, line))
+            self.assertEqual(klass, 'AClass', 'wrong class %s in line %d' % (klass, line))
 
         for line in range(5, 7):
             klass, _ = getClassAndParents(source, line)
-            self.assertEquals(klass, 'Sneak', 'wrong class %s in line %d' % (klass, line))
+            self.assertEqual(klass, 'Sneak', 'wrong class %s in line %d' % (klass, line))
 
         for line in range(7, 9):
             klass, _ = getClassAndParents(source, line)
-            self.assertEquals(klass, 'EvenSneakier', 'wrong class %s in line %d' % (klass, line))
+            self.assertEqual(klass, 'EvenSneakier', 'wrong class %s in line %d' % (klass, line))
 
         line = 9
         klass, _ = getClassAndParents(source, line)
-        self.assertEquals(klass, 'Sneak', 'wrong class %s in line %d' % (klass, line))
+        self.assertEqual(klass, 'Sneak', 'wrong class %s in line %d' % (klass, line))
 
         for line in range(10, 17):
             klass, _ = getClassAndParents(source, line)
-            self.assertEquals(klass, 'AClass', 'wrong class %s in line %d' % (klass, line))
+            self.assertEqual(klass, 'AClass', 'wrong class %s in line %d' % (klass, line))
 
         for line in range(17, 51):
             klass, _ = getClassAndParents(source, line)
-            self.assertEquals(klass, 'BClass', 'wrong class %s in line %d' % (klass, line))
+            self.assertEqual(klass, 'BClass', 'wrong class %s in line %d' % (klass, line))
 
 
     def testGetNames(self):
@@ -560,7 +560,7 @@ class InferencingTest(unittest.TestCase):
         """).replace('\n', '\r\n')
 
         expectedNames = {'Class': 'something.Class', 'a': 'Class()'}
-        self.assertEquals(getNames(source), (expectedNames, ['D']))
+        self.assertEqual(getNames(source), (expectedNames, ['D']))
 
 
     def testAnalyzeFile(self):
@@ -572,7 +572,7 @@ class InferencingTest(unittest.TestCase):
         expectedDict.enterModule('File')
         expectedDict.addProperty(None, 'CONSTANT')
         outDict = analyzeFile(path, source, )
-        self.assertEquals(outDict, expectedDict, '%r != %r' % (outDict._modules, expectedDict._modules))
+        self.assertEqual(outDict, expectedDict, '%r != %r' % (outDict._modules, expectedDict._modules))
 
     
 

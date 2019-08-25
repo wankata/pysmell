@@ -7,8 +7,8 @@
 
 # Released subject to the BSD License 
 
-import __builtin__
-import cPickle as pickle
+import builtins
+import pickle as pickle
 import os, re
 import fnmatch
 from dircache import listdir
@@ -29,7 +29,7 @@ def findBase(line, col):
     
 
 def updatePySmellDict(master, partial):
-    for key, value in partial.items():
+    for key, value in list(partial.items()):
         if isinstance(value, dict):
             master.setdefault(key, {}).update(value)
         elif isinstance(value, list):
@@ -146,7 +146,7 @@ def inferClass(fullPath, AST, origLineNo, PYSMELLDICT, vim=None):
     fullKlass = klass
     while pathParts:
         fullKlass = "%s.%s" % (pathParts.pop(), fullKlass)
-        if fullKlass in PYSMELLDICT['CLASSES'].keys():
+        if fullKlass in list(PYSMELLDICT['CLASSES'].keys()):
             break
     else:
         # we don't know about this class, look in the file system
@@ -308,7 +308,7 @@ def _createInstanceCompletionList(PYSMELLDICT, klass, parents):
     if klass: #if we know the class
         completions.extend(getCompletionsForClass(klass, parents, PYSMELLDICT))
     else: #just put everything
-        for klass, klassDict in PYSMELLDICT['CLASSES'].items():
+        for klass, klassDict in list(PYSMELLDICT['CLASSES'].items()):
             addCompletionsForClass(klass, klassDict, completions)
     return completions
 
@@ -317,7 +317,7 @@ def _createTopLevelCompletionList(PYSMELLDICT):
     completions = []
     completions.extend(_getCompForConstant(word) for word in PYSMELLDICT['CONSTANTS'])
     completions.extend(_getCompForFunction(func, 'f') for func in PYSMELLDICT['FUNCTIONS'])
-    completions.extend(_getCompForConstructor(klass, klassDict) for (klass, klassDict) in PYSMELLDICT['CLASSES'].items())
+    completions.extend(_getCompForConstructor(klass, klassDict) for (klass, klassDict) in list(PYSMELLDICT['CLASSES'].items()))
     return completions
 
 

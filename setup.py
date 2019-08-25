@@ -24,7 +24,7 @@ Consult the README for more information
 class install(_install):
     def run(self):
         _install.run(self)
-        print post_install_message
+        print(post_install_message)
 
 version = __import__('pysmell').__version__
 
